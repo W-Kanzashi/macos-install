@@ -1,0 +1,17 @@
+cask-arc
+cask-bitwarden
+cask-warp
+cask-raycast
+cask-cleanshot
+cask-aldente
+cask-google-chrome
+cask-tableplus
+cask-visual-studio-code
+cask-discord
+cask-tidal
+cask-font-geist
+cask-font-geist-mono
+cask-obsidian
+cask-syncthing
+neovim
+gh

@@ -1,0 +1,175 @@
+---
+- name: Close all System Preferences panels
+  shell: |
+    osascript -e 'tell application "System Preferences" to quit'
+  become: yes
+
+- name: Remove all Dock items except Finder and add Arc and Warp
+  shell: |
+    # Remove all Dock items except Finder
+    defaults write com.apple.dock persistent-apps -array
+    defaults write com.apple.dock persistent-others -array
+
+    # Add Arc browser to Dock
+    defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/Arc.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+
+    # Add Warp terminal to Dock
+    defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/Warp.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+
+    # Configure Dock behavior
+    defaults write com.apple.dock autohide -bool true
+    defaults write com.apple.dock tilesize -int 50
+    killall Dock
+  become: yes
+
+- name: Configure macOS Finder settings
+  shell: |
+    defaults write com.apple.finder AppleShowAllFiles -bool true
+    defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+    defaults write com.apple.finder ShowStatusBar -bool true
+    defaults write com.apple.finder ShowPathbar -bool true
+    killall Finder
+  become: yes
+
+- name: Configure macOS Trackpad settings
+  shell: |
+    defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+    defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+  become: yes
+
+- name: Configure macOS display, screen saver, and lock settings
+  shell: |
+    # Turn off display after 1 minute
+    sudo pmset displaysleep 1
+
+    # Start screen saver after 1 minute
+    defaults -currentHost write com.apple.screensaver idleTime 0
+
+    # Require password immediately after screen saver starts
+    defaults write com.apple.screensaver askForPassword -int 1
+    defaults write com.apple.screensaver askForPasswordDelay -int 0
+
+    # Set 24-hour clock to false
+    defaults write NSGlobalDomain AppleICUForce12HourTime -bool true
+
+    # Set show 24-hour time to false on lock screen
+    defaults write /Library/Preferences/com.apple.loginwindow "DateFormat" -string "EEE d MMM HH:mm:ss"
+  become: yes
+
+- name: Remove guest user
+  shell: |
+    sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool false
+  become: yes
+
+- name: Disable Spotlight
+  shell: |
+    sudo mdutil -a -i off
+  become: yes
+
+- name: Remove Cmd + Q behavior for quitting apps
+  shell: |
+    defaults write NSGlobalDomain NSUserKeyEquivalents -dict-add "Quit" nil
+  become: yes
+
+- name: Set keyboard brightness to 0
+  shell: |
+    sudo defaults write com.apple.BezelServices kDim -bool true
+    sudo defaults write com.apple.BezelServices kDimTime -int 300
+    sudo defaults write com.apple.BezelServices kDimLevel -int 0
+  become: yes
+
+- name: Disable adjust brightness in low light
+  shell: |
+    sudo defaults write /Library/Preferences/com.apple.iokit.AmbientLightSensor "Automatic Keyboard Enabled" -bool false
+    sudo defaults write /Library/Preferences/com.apple.iokit.AmbientLightSensor "Automatic Display Enabled" -bool false
+    sudo defaults write /Library/Preferences/com.apple.iokit.AmbientLightSensor "AutoBrightness" -bool false
+  become: yes
+
+- name: Add Music Recognition to Control Center
+  shell: |
+    defaults write com.apple.controlcenter "NSStatusItem Visible Shazam" -bool true
+  become: yes
+
+- name: Add Keyboard Brightness to Control Center
+  shell: |
+    defaults write com.apple.controlcenter "NSStatusItem Visible KeyboardBrightness" -bool true
+  become: yes
+
+- name: Remove Battery, WiFi, and Spotlight from Menu Bar
+  shell: |
+    defaults write com.apple.controlcenter "NSStatusItem Visible Battery" -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible WiFi" -bool false
+    defaults -currentHost write com.apple.Spotlight MenuItemHidden -int 1
+    defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying" -bool true
+    killall SystemUIServer
+  become: yes
+
+- name: Set Reduce Motion to True
+  shell: |
+    defaults write com.apple.universalaccess reduceMotion -bool true
+  become: yes
+
+- name: Launch Raycast
+  shell: |
+    open -a Raycast
+  become: yes
+
+- name: Set Warp as the default terminal
+  shell: |
+    defaults write com.apple.LaunchServices LSHandlers -array-add '{"LSHandlerURLScheme" = "ssh"; "LSHandlerRoleAll" = "com.warp.app";}'
+  become: yes
+
+- name: Disable sound effect on boot
+  shell: |
+    sudo nvram SystemAudioVolume=" "
+  become: yes
+
+- name: Save to disk by default
+  shell: |
+    defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+  become: yes
+
+- name: Disable "Are you sure you want to open this application?" dialog
+  shell: |
+    defaults write com.apple.LaunchServices LSQuarantine -bool false
+  become: yes
+
+- name: Increase sound quality for Bluetooth headphones/headsets
+  shell: |
+    defaults write com.apple.BluetoothAudioAgent "Apple Bitpool Min (editable)" -int 40
+  become: yes
+
+- name: Avoid creating .DS_Store files on network or USB volumes
+  shell: |
+    defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+    defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
+  become: yes
+
+- name: Remove all from open at login except Raycast
+  shell: |
+    osascript -e 'tell application "System Events" to delete every login item'
+    osascript -e 'tell application "System Events" to make new login item at end with properties {name: "Raycast", path: "/Applications/Raycast.app", hidden: false}'
+  become: yes
+
+- name: Set battery low power mode to only on battery
+  shell: |
+    sudo pmset -a lowpowermode 0
+    sudo pmset -b lowpowermode 1
+  become: yes
+
+- name: Set AirDrop to off
+  shell: |
+    defaults write com.apple.NetworkBrowser DisableAirDrop -bool true
+  become: yes
+
+- name: Remove Spotlight from Menu Bar
+  shell: |
+    sudo chmod 600 /System/Library/CoreServices/Search.bundle/Contents/MacOS/Search
+    killall SystemUIServer
+  become: yes
+
+- name: Add Battery and Show Percentage to Control Center
+  shell: |
+    defaults write com.apple.controlcenter "NSStatusItem Visible Battery" -bool true
+    defaults write com.apple.controlcenter "BatteryShowPercentage" -bool true
+  become: yes

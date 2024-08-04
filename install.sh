@@ -4,6 +4,9 @@
 if ! command -v brew &> /dev/null; then
   echo "Homebrew not found. Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> /Users/test/.zprofile
+  eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
 echo "Updating Homebrew..."
@@ -22,27 +25,22 @@ if ! command -v pip3 &> /dev/null; then
   rm get-pip.py
 fi
 
-# Install Ansible using pip3
-echo "Installing Ansible..."
-pip3 install ansible
-
 # Ensure ansible-playbook is available
 if ! command -v $(python3 -m site --user-base)/bin/ansible-playbook &> /dev/null; then
-    echo "$(python3 -m site --user-base)/bin/ansible-playbook command not found. There was an issue with the Ansible installation."
+    # Install Ansible using pip3
+    echo "Installing Ansible..."
+    pip3 install ansible
+
+    if ! command -v $(python3 -m site --user-base)/bin/ansible-playbook &> /dev/null; then
+	echo "$(python3 -m site --user-base)/bin/ansible-playbook command not found. There was an issue with the Ansible installation."
     exit 1
+    fi
 fi
 
-# URL of the remote Ansible playbook
-PLAYBOOK_URL="https://gist.githubusercontent.com/W-Kanzashi/b63114d17bad66f6c795b2d1fef6380f/raw/aae1932e0a5170c0f5416940dccd2e2cd0220069/macos-ansible.yml"
+# Playbook file
+PLAYBOOK_PATH="./playbooks/main.yml"
 
-# Temporary file to store the downloaded playbook
-PLAYBOOK_PATH="/tmp/install_packages.yml"
-
-# Download the playbook from the remote URL
-echo "Downloading Ansible playbook from GitHub Gist..."
-curl -fsSL $PLAYBOOK_URL -o $PLAYBOOK_PATH
-
-# Ensure the playbook was downloaded successfully
+# Ensure the playbook exist
 if [ ! -f $PLAYBOOK_PATH ]; then
   echo "Failed to download the Ansible playbook."
   exit 1
@@ -51,6 +49,3 @@ fi
 # Run the Ansible playbook
 echo "Running Ansible playbook..."
 $(python3 -m site --user-base)/bin/ansible-playbook -vvv $PLAYBOOK_PATH --ask-become-pass
-
-# Clean files
-rm $PLAYBOOK_PATH

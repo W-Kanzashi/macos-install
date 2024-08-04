@@ -1,7 +1,0 @@
-cask-bitwarden
-cask-warp
-cask-arc
-cask-raycast
-cask-cleanshot
-cask-aldente
-neovim
