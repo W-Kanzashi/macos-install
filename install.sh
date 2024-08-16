@@ -5,12 +5,16 @@ if ! command -v brew &> /dev/null; then
   echo "Homebrew not found. Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-  (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> /Users/test/.zprofile
+  # Add Homebrew to the .zprofile file
+  (echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> /Users/$USER/.zprofile
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
-echo "Updating Homebrew..."
-brew update
+# Check if brew	is up to date
+if brew outdated; then
+  echo "Homebrew is outdated. Updating Homebrew..."
+  brew update
+fi
 
 if ! command -v python3 &> /dev/null; then
   echo "Python3 not found. Installing Python3..."

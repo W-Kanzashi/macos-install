@@ -15,3 +15,5 @@ cask-obsidian
 cask-syncthing
 neovim
 gh
+ripgrep
+fd

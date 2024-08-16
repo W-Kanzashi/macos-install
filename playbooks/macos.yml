@@ -39,10 +39,10 @@
 
 - name: Configure macOS display, screen saver, and lock settings
   shell: |
-    # Turn off display after 1 minute
-    sudo pmset displaysleep 1
+    # Turn off display after 5 minute
+    sudo pmset displaysleep 5
 
-    # Start screen saver after 1 minute
+    # Start screen saver after 0 minute
     defaults -currentHost write com.apple.screensaver idleTime 0
 
     # Require password immediately after screen saver starts
