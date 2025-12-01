@@ -1,0 +1,40 @@
+---
+# Development environment setup (Neovim, NVM, Node.js, pnpm)
+
+- name: Clone Neovim configuration repository
+  git:
+    repo: "{{ neovim_config_repo }}"
+    dest: "{{ neovim_config_dest }}"
+    update: yes
+  become: no
+  when: ansible_os_family == "Darwin"
+
+- name: Install NVM (Node Version Manager)
+  shell: |
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  args:
+    creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+  become: no
+  when: ansible_os_family == "Darwin"
+
+- name: Install Node.js 24.10 using NVM
+  shell: |
+    export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm install 24.10
+    nvm use 24.10
+    nvm alias default 24.10
+  args:
+    executable: /bin/zsh
+  become: no
+  when: ansible_os_family == "Darwin"
+
+- name: Install pnpm latest version
+  shell: |
+    export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    npm install -g pnpm
+  args:
+    executable: /bin/zsh
+  become: no
+  when: ansible_os_family == "Darwin"

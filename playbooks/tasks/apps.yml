@@ -1,0 +1,20 @@
+---
+# Application-specific configurations
+
+- name: Ensure Syncthing config directory exists
+  file:
+    path: "{{ ansible_env.HOME }}/Library/Application Support/Syncthing"
+    state: directory
+    mode: "0755"
+  become: no
+  when: ansible_os_family == "Darwin"
+
+- name: Copy Syncthing configuration files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_env.HOME }}/Library/Application Support/Syncthing/"
+    mode: "0600"
+  with_fileglob:
+    - "../vault/Library/Application Support/Syncthing/*"
+  become: no
+  when: ansible_os_family == "Darwin"

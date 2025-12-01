@@ -1,0 +1,78 @@
+---
+# Homebrew installation, updates, and package management
+
+- name: Check if Homebrew is installed
+  command: which brew
+  register: brew_path
+  ignore_errors: yes
+
+- name: Install Homebrew if not installed
+  shell: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  when: brew_path.rc != 0
+  become: no
+
+- name: Check for Homebrew local modifications
+  shell: git -C "$(brew --repository)" diff-index --quiet HEAD --
+  register: brew_git_check
+  ignore_errors: yes
+  become: no
+
+- name: Display warning if Homebrew has local modifications
+  debug:
+    msg: "WARNING: Local modifications detected in Homebrew repository. Skipping 'brew update' to preserve your changes."
+  when: brew_git_check.rc != 0
+
+- name: Ensure Homebrew is up to date
+  command: brew update
+  when: brew_path.rc == 0 and brew_git_check.rc == 0
+  become: no
+
+- name: Read package list into variable
+  set_fact:
+    packages: "{{ lookup('file', package_list_path).splitlines() }}"
+
+- name: Separate formulae and casks
+  set_fact:
+    formulae: "{{ packages | reject('search', '^cask-') | list }}"
+    casks: "{{ packages | select('search', '^cask-') | map('regex_replace', '^cask-', '') | list }}"
+
+- name: Fetch list of installed formulae
+  command: brew list --formula
+  register: installed_formulae
+  become: no
+
+- name: Determine which formulae to install
+  set_fact:
+    formulae_to_install: "{{ formulae | difference(installed_formulae.stdout_lines) }}"
+
+- name: Install formulae using Homebrew
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ formulae_to_install }}"
+  when: ansible_os_family == "Darwin"
+  become: no
+
+- name: Fetch list of installed casks
+  command: brew list --cask
+  register: installed_casks
+  become: no
+
+- name: Determine which casks to install
+  set_fact:
+    casks_to_install: "{{ casks | difference(installed_casks.stdout_lines) }}"
+
+- name: Install casks using Homebrew
+  community.general.homebrew_cask:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ casks_to_install }}"
+  when: ansible_os_family == "Darwin"
+  become: no
+
+- name: Install git if not present
+  community.general.homebrew:
+    name: git
+    state: present
+  when: ansible_os_family == "Darwin"
+  become: no
