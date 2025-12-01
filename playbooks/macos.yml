@@ -1,7 +1,7 @@
 ---
-- name: Close all System Preferences panels
+- name: Close all System Settings panels
   shell: |
-    osascript -e 'tell application "System Preferences" to quit'
+    osascript -e 'tell application "System Settings" to quit'
   become: yes
 
 - name: Remove all Dock items except Finder and add Arc and Warp

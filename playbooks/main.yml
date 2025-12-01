@@ -20,9 +20,20 @@
       when: brew_path.rc != 0
       become: no
 
+    - name: Check for Homebrew local modifications
+      shell: git -C "$(brew --repository)" diff-index --quiet HEAD --
+      register: brew_git_check
+      ignore_errors: yes
+      become: no
+
+    - name: Display warning if Homebrew has local modifications
+      debug:
+        msg: "WARNING: Local modifications detected in Homebrew repository. Skipping 'brew update' to preserve your changes."
+      when: brew_git_check.rc != 0
+
     - name: Ensure Homebrew is up to date
       command: brew update
-      when: brew_path.rc == 0
+      when: brew_path.rc == 0 and brew_git_check.rc == 0
       become: no
 
     - name: Read package list into variable
@@ -80,6 +91,111 @@
         repo: "{{ neovim_config_repo }}"
         dest: "{{ neovim_config_dest }}"
         update: yes
+      become: no
+      when: ansible_os_family == "Darwin"
+
+    - name: Prompt for Ansible Vault password
+      pause:
+        prompt: "Enter Ansible Vault password"
+        echo: no
+      register: vault_password
+      when: ansible_os_family == "Darwin"
+
+    - name: Find encrypted files in vault directory
+      find:
+        paths: "../vault"
+        recurse: yes
+        file_type: file
+      register: vault_files
+      become: no
+
+    - name: Create vault password file temporarily
+      copy:
+        content: "{{ vault_password.user_input }}"
+        dest: "/tmp/.vault_pass"
+        mode: "0600"
+      become: no
+      when: vault_files.matched > 0
+
+    - name: Decrypt vault files
+      shell: |
+        if head -n1 "{{ item.path }}" | grep -q '$ANSIBLE_VAULT'; then
+          ansible-vault decrypt "{{ item.path }}" --vault-password-file /tmp/.vault_pass 2>/dev/null || echo "Already decrypted or error: {{ item.path }}"
+        fi
+      loop: "{{ vault_files.files }}"
+      become: no
+      when: vault_files.matched > 0
+      ignore_errors: yes
+
+    - name: Remove vault password file
+      file:
+        path: "/tmp/.vault_pass"
+        state: absent
+      become: no
+      when: vault_files.matched > 0
+
+    - name: Find config files in vault/config directory
+      find:
+        paths: "../vault/config"
+        recurse: yes
+        file_type: file
+      register: config_files
+      become: no
+
+    - name: Copy config files to home directory
+      copy:
+        src: "{{ item.path }}"
+        dest: "{{ ansible_env.HOME }}/{{ item.path | regex_replace('^.*/vault/config/', '') }}"
+        mode: preserve
+      loop: "{{ config_files.files }}"
+      become: no
+      when: config_files.matched > 0
+
+    - name: Install NVM (Node Version Manager)
+      shell: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+      args:
+        creates: "{{ ansible_env.HOME }}/.nvm/nvm.sh"
+      become: no
+      when: ansible_os_family == "Darwin"
+
+    - name: Install Node.js 24.10 using NVM
+      shell: |
+        export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install 24.10
+        nvm use 24.10
+        nvm alias default 24.10
+      args:
+        executable: /bin/zsh
+      become: no
+      when: ansible_os_family == "Darwin"
+
+    - name: Install pnpm latest version
+      shell: |
+        export NVM_DIR="{{ ansible_env.HOME }}/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npm install -g pnpm
+      args:
+        executable: /bin/zsh
+      become: no
+      when: ansible_os_family == "Darwin"
+
+    - name: Ensure Syncthing config directory exists
+      file:
+        path: "{{ ansible_env.HOME }}/Library/Application Support/Syncthing"
+        state: directory
+        mode: "0755"
+      become: no
+      when: ansible_os_family == "Darwin"
+
+    - name: Copy Syncthing configuration files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ ansible_env.HOME }}/Library/Application Support/Syncthing/"
+        mode: "0600"
+      with_fileglob:
+        - "../vault/Library/Application Support/Syncthing/*"
       become: no
       when: ansible_os_family == "Darwin"
 

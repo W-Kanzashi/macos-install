@@ -4,11 +4,9 @@ cask-warp
 cask-raycast
 cask-cleanshot
 cask-aldente
-cask-google-chrome
 cask-tableplus
 cask-visual-studio-code
 cask-discord
-cask-tidal
 cask-font-geist
 cask-font-geist-mono
 cask-obsidian
@@ -17,3 +15,7 @@ neovim
 gh
 ripgrep
 fd
+lazygit
+git-delta
+cask-stats
+cask-parsec

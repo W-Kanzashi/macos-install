@@ -10,10 +10,18 @@ if ! command -v brew &> /dev/null; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
-# Check if brew	is up to date
-if brew outdated; then
-  echo "Homebrew is outdated. Updating Homebrew..."
-  brew update
+# Check if brew has local modifications
+BREW_REPO=$(brew --repository)
+if git -C "$BREW_REPO" diff-index --quiet HEAD --; then
+  # No local modifications, safe to update
+  if brew outdated; then
+    echo "Homebrew is outdated. Updating Homebrew..."
+    brew update
+  fi
+else
+  echo "⚠️  Warning: Local modifications detected in Homebrew repository."
+  echo "   Skipping 'brew update' to preserve your changes."
+  echo "   Location: $BREW_REPO"
 fi
 
 if ! command -v python3 &> /dev/null; then
