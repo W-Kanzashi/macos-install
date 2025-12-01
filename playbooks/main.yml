@@ -94,13 +94,6 @@
       become: no
       when: ansible_os_family == "Darwin"
 
-    - name: Prompt for Ansible Vault password
-      pause:
-        prompt: "Enter Ansible Vault password"
-        echo: no
-      register: vault_password
-      when: ansible_os_family == "Darwin"
-
     - name: Find encrypted files in vault directory
       find:
         paths: "../vault"
@@ -108,6 +101,29 @@
         file_type: file
       register: vault_files
       become: no
+      ignore_errors: yes
+
+    - name: Check for encrypted files
+      shell: |
+        if [ -f "{{ item.path }}" ]; then
+          head -n1 "{{ item.path }}" | grep -q '$ANSIBLE_VAULT' && echo "encrypted" || echo "plain"
+        else
+          echo "notfound"
+        fi
+      register: encryption_check
+      loop: "{{ vault_files.files }}"
+      become: no
+      when: vault_files.matched > 0
+      changed_when: false
+
+    - name: Prompt for Ansible Vault password
+      pause:
+        prompt: "Enter Ansible Vault password"
+        echo: no
+      register: vault_password
+      when:
+        - vault_files.matched > 0
+        - encryption_check.results | selectattr('stdout', 'equalto', 'encrypted') | list | length > 0
 
     - name: Create vault password file temporarily
       copy:
@@ -115,7 +131,9 @@
         dest: "/tmp/.vault_pass"
         mode: "0600"
       become: no
-      when: vault_files.matched > 0
+      when:
+        - vault_files.matched > 0
+        - vault_password.user_input is defined
 
     - name: Decrypt vault files
       shell: |
@@ -124,7 +142,9 @@
         fi
       loop: "{{ vault_files.files }}"
       become: no
-      when: vault_files.matched > 0
+      when:
+        - vault_files.matched > 0
+        - vault_password.user_input is defined
       ignore_errors: yes
 
     - name: Remove vault password file
@@ -132,7 +152,9 @@
         path: "/tmp/.vault_pass"
         state: absent
       become: no
-      when: vault_files.matched > 0
+      when:
+        - vault_files.matched > 0
+        - vault_password.user_input is defined
 
     - name: Find config files in vault/config directory
       find:
@@ -142,6 +164,15 @@
       register: config_files
       become: no
 
+    - name: Create parent directories for config files
+      file:
+        path: "{{ ansible_env.HOME }}/{{ item.path | regex_replace('^.*/vault/config/', '') | dirname }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ config_files.files }}"
+      become: no
+      when: config_files.matched > 0
+
     - name: Copy config files to home directory
       copy:
         src: "{{ item.path }}"
@@ -150,6 +181,33 @@
       loop: "{{ config_files.files }}"
       become: no
       when: config_files.matched > 0
+
+    - name: Find app config files in vault/apps directory
+      find:
+        paths: "../vault/apps"
+        recurse: yes
+        file_type: file
+      register: app_files
+      become: no
+      ignore_errors: yes
+
+    - name: Create parent directories for app config files
+      file:
+        path: "{{ ansible_env.HOME }}/.config/{{ item.path | regex_replace('^.*/vault/apps/', '') | dirname }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ app_files.files }}"
+      become: no
+      when: app_files.matched > 0
+
+    - name: Copy app config files to .config directory
+      copy:
+        src: "{{ item.path }}"
+        dest: "{{ ansible_env.HOME }}/.config/{{ item.path | regex_replace('^.*/vault/apps/', '') }}"
+        mode: preserve
+      loop: "{{ app_files.files }}"
+      become: no
+      when: app_files.matched > 0
 
     - name: Install NVM (Node Version Manager)
       shell: |

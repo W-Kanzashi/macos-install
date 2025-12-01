@@ -1,0 +1,13 @@
+# ─── Theme ────────────────────────────────────────────
+theme = dark:custom,light:custom
+
+background-image-opacity = 0.22
+background-image-fit = cover
+minimum-contrast = 1.1
+background-blur = true
+
+macos-icon = paper
+
+# ─── Font ─────────────────────────────────────────────
+font-family = Geist Mono Regular
+font-size = 16
